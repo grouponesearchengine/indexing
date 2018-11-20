@@ -77,7 +77,7 @@ def indexing():
     bpath = 'repository/'
     paths = sorted(os.listdir(bpath))
     reposize = len(paths)
-    for i, fpath in enumerate(paths[:10]):
+    for i, fpath in enumerate(paths):
         print(i+1, 'of', reposize, '>', fpath)
         html = open(bpath+fpath)
         data = parse(fpath, html)
