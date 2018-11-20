@@ -73,17 +73,20 @@ def parse(fpath, html):
 
 
 def indexing():
-    articles = []
     bpath = 'repository/'
     paths = sorted(os.listdir(bpath))
-    reposize = len(paths)
+    articles = []
+    max_art = len(paths)-1
     for i, fpath in enumerate(paths):
-        print(i+1, 'of', reposize, '>', fpath)
         html = open(bpath+fpath)
         data = parse(fpath, html)
         articles.append(data)
-    with open('index.json', 'w') as fobj:
-        json.dump(articles, fobj)
+        if i % 1000 == 999 or i == max_art:
+            outpath = 'index'+str(i//1000).zfill(3)+'.json'
+            with open(outpath, 'w') as fobj:
+                json.dump(articles, fobj)
+            articles = []
+        print('article', i, 'of', max_art)
 
 
 if __name__ == '__main__':
