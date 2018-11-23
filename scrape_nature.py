@@ -1,6 +1,7 @@
 import shutil
 import urllib.request
 import time
+import sys
 import re
 import os
 
@@ -8,7 +9,9 @@ import os
 def init_dir():
     repdir = 'repository/'
     if os.path.exists(repdir):
-        shutil.rmtree(repdir)
+        # shutil.rmtree(repdir)
+        print('repository/ already exists')
+        sys.exit(1)
     os.mkdir(repdir)
 
 
@@ -21,7 +24,7 @@ def repository_fpath(url):
 def scrape():
     init_dir()
     host = 'https://www.nature.com/articles/srep'
-    for i in range(45784, 1, -1):
+    for i in range(46769, 1, -1):
         url = host+str(i).zfill(5)
         html = ''
         try:

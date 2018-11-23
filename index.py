@@ -1,21 +1,31 @@
-
 from bs4 import BeautifulSoup
+import pprint
+import shutil
 import json
 import re
 import os
-import pprint
+
+
+def init_dir():
+    repdir = 'index/'
+    if os.path.exists(repdir):
+        shutil.rmtree(repdir)
+    os.mkdir(repdir)
 
 
 def tag_to_text(tag):
     # TODO figure out how to replace tag with space
     try:
-        return tag.get_text()
-    except AttributeError as err:
+        return tag.get_text().strip()
+    except AttributeError:
         return ''
 
 
 def list_to_text(tags):
-    return [t.get_text() for t in tags]
+    try:
+        return [t.get_text().strip() for t in tags]
+    except AttributeError:
+        return []
 
 
 def fpath_to_url(path):
@@ -23,16 +33,24 @@ def fpath_to_url(path):
     return 'https://www.nature.com/articles/srep'+ext
 
 
+def trans_re(text):
+    trans = {'<': ' <', '/>': ' />'}
+    regex = re.compile("(%s)" % "|".join(map(re.escape, trans.keys())))
+    text_n = regex.sub(lambda mo: trans[mo.string[mo.start():mo.end()]], text)
+    return re.sub(' +', ' ', text_n)
+
+
 def parse(fpath, html):
 
-    tree = BeautifulSoup(html, 'html.parser')
+    html = trans_re(html.read())
+
+    tree = BeautifulSoup(html, 'lxml')
     title = tree.find('h1', {'itemprop': 'name headline'})
     abstract = tree.find('div', {'id': 'abstract-content'})
     introduction = tree.find('div', {'id': 'introduction-content'})
     results = tree.find('div', {'id': [
         'results-content',
-        'results-and-discussion-content'
-        ]})
+        'results-and-discussion-content']})
     discussion = tree.find('div', {'id': [
         'discussion-content',
         'conclusions']})
@@ -40,13 +58,24 @@ def parse(fpath, html):
         'methods-content',
         'materials-and-methods-content',
         'experimental-content']})
+    date = tree.find('time')
+    volume = tree.find('div', {'data-container-section': 'info'})
+    cited = tree.find('p', {'data-test': 'citation-count'})
     info = tree.find('div', {'id': 'additional-information-content'})
-    subjects = tree \
-        .find('div', {'data-component': 'article-subject-links'}) \
-        .find_all('li')
-    authors = tree \
-        .find('li', {'itemprop': 'author'}) \
-        .find_all('span', {'itemprop': 'name'})
+    
+    try:
+        subjects = tree \
+            .find('div', {'data-component': 'article-subject-links'}) \
+            .find_all('li')
+    except AttributeError:
+        subjects = []
+
+    try:
+        authors = tree \
+            .find('li', {'itemprop': 'author'}) \
+            .find_all('span', {'itemprop': 'name'})
+    except AttributeError:
+        authors = []
 
     try:
         references = tree \
@@ -54,7 +83,7 @@ def parse(fpath, html):
             .find('li', {'itemprop': 'citation'}) \
             .find_all('p')
     except AttributeError:
-        references = ''
+        references = []
 
     data = {
         'url': fpath_to_url(fpath),
@@ -64,6 +93,9 @@ def parse(fpath, html):
         'results': tag_to_text(results),
         'discussion': tag_to_text(discussion),
         'methods': tag_to_text(methods),
+        'date': tag_to_text(date),
+        'volume': tag_to_text(volume),
+        'cited': tag_to_text(cited),
         'info': tag_to_text(info),
         'authors': list_to_text(authors),
         'references': list_to_text(references),
@@ -82,7 +114,7 @@ def indexing():
         data = parse(fpath, html)
         articles.append(data)
         if i % 1000 == 999 or i == max_art:
-            outpath = 'index'+str(i//1000).zfill(3)+'.json'
+            outpath = 'index/index'+str(i//1000).zfill(3)+'.json'
             with open(outpath, 'w') as fobj:
                 json.dump(articles, fobj)
             articles = []
